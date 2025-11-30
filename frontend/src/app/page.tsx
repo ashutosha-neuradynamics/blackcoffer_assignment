@@ -71,6 +71,11 @@ export default function DashboardPage() {
   const [regionData, setRegionData] = useState<any[]>([]);
   const [pestleData, setPestleData] = useState<any[]>([]);
   const [scatterData, setScatterData] = useState<any[]>([]);
+  const [initialRanges, setInitialRanges] = useState<{
+    intensity: { min: number; max: number };
+    likelihood: { min: number; max: number };
+    relevance: { min: number; max: number };
+  } | null>(null);
 
   useEffect(() => {
     axios
@@ -79,12 +84,49 @@ export default function DashboardPage() {
       .catch((err) => {
         console.error("Failed to load filter options", err);
       });
+    
+    // Get initial ranges from all data
+    axios
+      .get(`${API_BASE}/api/data?limit=1000`)
+      .then((res) => {
+        const allItems = res.data.items;
+        const intensityValues = allItems.map((i: Insight) => i.intensity).filter((v: any) => v != null) as number[];
+        const likelihoodValues = allItems.map((i: Insight) => i.likelihood).filter((v: any) => v != null) as number[];
+        const relevanceValues = allItems.map((i: Insight) => i.relevance).filter((v: any) => v != null) as number[];
+        
+        setInitialRanges({
+          intensity: {
+            min: intensityValues.length ? Math.min(...intensityValues) : 0,
+            max: intensityValues.length ? Math.max(...intensityValues) : 100,
+          },
+          likelihood: {
+            min: likelihoodValues.length ? Math.min(...likelihoodValues) : 0,
+            max: likelihoodValues.length ? Math.max(...likelihoodValues) : 5,
+          },
+          relevance: {
+            min: relevanceValues.length ? Math.min(...relevanceValues) : 0,
+            max: relevanceValues.length ? Math.max(...relevanceValues) : 5,
+          },
+        });
+      })
+      .catch((err) => console.error("Failed to load initial ranges", err));
   }, []);
 
   useEffect(() => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
-      if (value) params.set(key, value);
+      if (value) {
+        // Only send range filters if they differ from initial ranges
+        if (initialRanges) {
+          if (key === "intensityMin" && Number(value) === initialRanges.intensity.min) return;
+          if (key === "intensityMax" && Number(value) === initialRanges.intensity.max) return;
+          if (key === "likelihoodMin" && Number(value) === initialRanges.likelihood.min) return;
+          if (key === "likelihoodMax" && Number(value) === initialRanges.likelihood.max) return;
+          if (key === "relevanceMin" && Number(value) === initialRanges.relevance.min) return;
+          if (key === "relevanceMax" && Number(value) === initialRanges.relevance.max) return;
+        }
+        params.set(key, value);
+      }
     });
     params.set("limit", "1000");
 

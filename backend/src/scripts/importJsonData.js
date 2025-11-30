@@ -31,10 +31,18 @@ async function importJsonData({ filePath, Model }) {
     likelihood: toNullableNumber(item.likelihood),
   }));
 
-  const inserted = await Model.insertMany(documents);
+  const BATCH_SIZE = 1000;
+  let totalInserted = 0;
+
+  for (let i = 0; i < documents.length; i += BATCH_SIZE) {
+    const batch = documents.slice(i, i + BATCH_SIZE);
+    const inserted = await Model.insertMany(batch, { ordered: false });
+    totalInserted += inserted.length;
+    console.log(`Inserted batch: ${totalInserted}/${documents.length} records`);
+  }
 
   return {
-    insertedCount: inserted.length,
+    insertedCount: totalInserted,
   };
 }
 

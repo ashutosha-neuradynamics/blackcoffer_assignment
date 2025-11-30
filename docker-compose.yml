@@ -1,0 +1,22 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: blackcoffer_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: blackcoffer_dashboard
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - blackcoffer_network
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  blackcoffer_network:
+    driver: bridge
+
